@@ -553,7 +553,7 @@
                     </div>
                     <div style="position: relative;">
                         <div class="location-input">
-                            <input type="text" id="locationInput" placeholder="输入您的位置（如：西湖文化广场）" autocomplete="off">
+                            <input type="text" id="locationInput" placeholder="输入：西湖、东站、滨江等（按回车搜索）" autocomplete="off" onkeypress="if(event.key==='Enter')searchLocation()">
                             <button onclick="searchLocation()">🔍 搜索</button>
                             <button onclick="getCurrentLocation()">📍 定位</button>
                         </div>
@@ -816,12 +816,16 @@
             // 初始化插件
             AMap.plugin(['AMap.Geocoder', 'AMap.PlaceSearch', 'AMap.Driving'], function() {
                 geocoder = new AMap.Geocoder({
-                    city: '杭州'
+                    city: '杭州',
+                    radius: 10000
                 });
                 placeSearch = new AMap.PlaceSearch({
                     city: '杭州',
-                    pageSize: 5
+                    citylimit: true,
+                    pageSize: 5,
+                    type: '商务住宅|交通设施服务'
                 });
+                console.log('高德插件加载成功');
             });
 
             updateMapMarkers();
@@ -870,37 +874,80 @@
             });
         }
 
+        // 杭州热门地点预设（作为备用搜索）
+        const presetLocations = [
+            { name: '西湖', address: '杭州市西湖区', lng: 120.128, lat: 30.245 },
+            { name: '西湖文化广场', address: '杭州市拱墅区', lng: 120.165, lat: 30.275 },
+            { name: '龙翔桥', address: '杭州市上城区', lng: 120.165, lat: 30.255 },
+            { name: '杭州东站', address: '杭州市江干区', lng: 120.215, lat: 30.293 },
+            { name: '杭州站', address: '杭州市上城区', lng: 120.180, lat: 30.245 },
+            { name: '滨江', address: '杭州市滨江区', lng: 120.215, lat: 30.205 },
+            { name: '萧山', address: '杭州市萧山区', lng: 120.265, lat: 30.165 },
+            { name: '余杭', address: '杭州市余杭区', lng: 120.295, lat: 30.425 },
+            { name: '武林广场', address: '杭州市拱墅区', lng: 120.165, lat: 30.275 },
+            { name: '钱江新城', address: '杭州市上城区', lng: 120.215, lat: 30.255 },
+            { name: '西溪湿地', address: '杭州市西湖区', lng: 120.065, lat: 30.265 },
+            { name: '宋城', address: '杭州市西湖区', lng: 120.105, lat: 30.185 }
+        ];
+
         // 搜索位置
         function searchLocation() {
-            const keyword = document.getElementById('locationInput').value;
-            if (!keyword) return;
-
-            if (!placeSearch) {
-                alert('地图正在加载中，请稍后再试');
+            const keyword = document.getElementById('locationInput').value.trim();
+            if (!keyword) {
+                alert('请输入搜索关键词');
                 return;
             }
 
-            placeSearch.search(keyword, function(status, result) {
-                if (status === 'complete' && result.info === 'OK') {
-                    const pois = result.poiList.pois;
-                    if (pois.length > 0) {
-                        showSuggestions(pois);
-                    } else {
-                        alert('未找到该位置');
+            // 先尝试本地预设匹配
+            const localMatches = presetLocations.filter(loc =>
+                loc.name.includes(keyword) || keyword.includes(loc.name)
+            );
+
+            // 如果高德插件已加载，同时使用高德搜索
+            if (placeSearch) {
+                placeSearch.search(keyword, function(status, result) {
+                    console.log('搜索状态:', status, result);
+
+                    let allResults = [...localMatches];
+
+                    if (status === 'complete' && result.info === 'OK' && result.poiList) {
+                        const pois = result.poiList.pois || [];
+                        // 合并高德搜索结果
+                        pois.forEach(poi => {
+                            if (!allResults.find(r => r.name === poi.name)) {
+                                allResults.push({
+                                    name: poi.name,
+                                    address: poi.address || poi.adname,
+                                    lng: poi.location.lng,
+                                    lat: poi.location.lat
+                                });
+                            }
+                        });
                     }
+
+                    if (allResults.length > 0) {
+                        showSuggestions(allResults);
+                    } else {
+                        alert('未找到相关位置，试试输入：西湖、东站、滨江等');
+                    }
+                });
+            } else {
+                // 插件未加载，只用本地数据
+                if (localMatches.length > 0) {
+                    showSuggestions(localMatches);
                 } else {
-                    alert('搜索失败');
+                    alert('地图加载中，请稍后再试，或输入：西湖、东站、滨江等热门地点');
                 }
-            });
+            }
         }
 
         // 显示搜索建议
-        function showSuggestions(pois) {
+        function showSuggestions(locations) {
             const suggestions = document.getElementById('suggestions');
-            suggestions.innerHTML = pois.map(poi => `
-                <div class="suggestion-item" onclick="selectLocation(${poi.location.lng}, ${poi.location.lat}, '${poi.name}')">
-                    <b>${poi.name}</b><br>
-                    <small style="color:#999">${poi.address || ''}</small>
+            suggestions.innerHTML = locations.slice(0, 8).map(loc => `
+                <div class="suggestion-item" onclick="selectLocation(${loc.lng}, ${loc.lat}, '${loc.name}')">
+                    <b>${loc.name}</b><br>
+                    <small style="color:#999">${loc.address || ''}</small>
                 </div>
             `).join('');
             suggestions.classList.add('active');

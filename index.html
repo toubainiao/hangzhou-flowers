@@ -905,38 +905,50 @@
 
             // 如果高德插件已加载，同时使用高德搜索
             if (placeSearch) {
-                placeSearch.search(keyword, function(status, result) {
-                    console.log('搜索状态:', status, result);
+                try {
+                    placeSearch.search(keyword, function(status, result) {
+                        console.log('搜索状态:', status, '结果:', result);
 
-                    let allResults = [...localMatches];
+                        let allResults = [...localMatches];
 
-                    if (status === 'complete' && result.info === 'OK' && result.poiList) {
-                        const pois = result.poiList.pois || [];
-                        // 合并高德搜索结果
-                        pois.forEach(poi => {
-                            if (!allResults.find(r => r.name === poi.name)) {
-                                allResults.push({
-                                    name: poi.name,
-                                    address: poi.address || poi.adname,
-                                    lng: poi.location.lng,
-                                    lat: poi.location.lat
-                                });
-                            }
-                        });
-                    }
+                        // 高德搜索成功，合并结果
+                        if (status === 'complete' && result && result.info === 'OK' && result.poiList) {
+                            const pois = result.poiList.pois || [];
+                            pois.forEach(poi => {
+                                if (poi.location && !allResults.find(r => r.name === poi.name)) {
+                                    allResults.push({
+                                        name: poi.name,
+                                        address: poi.address || poi.adname || '杭州市',
+                                        lng: poi.location.lng,
+                                        lat: poi.location.lat
+                                    });
+                                }
+                            });
+                        }
 
-                    if (allResults.length > 0) {
-                        showSuggestions(allResults);
+                        // 有结果就显示，不管高德是否成功
+                        if (allResults.length > 0) {
+                            showSuggestions(allResults);
+                        } else {
+                            // 本地也没有，显示预设的全部地点
+                            showSuggestions(presetLocations);
+                        }
+                    });
+                } catch (e) {
+                    console.error('搜索出错:', e);
+                    // 高德出错，用本地数据
+                    if (localMatches.length > 0) {
+                        showSuggestions(localMatches);
                     } else {
-                        alert('未找到相关位置，试试输入：西湖、东站、滨江等');
+                        showSuggestions(presetLocations);
                     }
-                });
+                }
             } else {
                 // 插件未加载，只用本地数据
                 if (localMatches.length > 0) {
                     showSuggestions(localMatches);
                 } else {
-                    alert('地图加载中，请稍后再试，或输入：西湖、东站、滨江等热门地点');
+                    showSuggestions(presetLocations);
                 }
             }
         }

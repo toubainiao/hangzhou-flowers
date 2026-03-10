@@ -237,13 +237,6 @@
             border-radius: 10px;
             object-fit: cover;
             margin-right: 15px;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        .spot-image:hover {
-            transform: scale(1.05);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
 
         .spot-info {
@@ -283,6 +276,13 @@
             margin-right: 10px;
         }
 
+        .spot-actions {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 8px;
+        }
+
         .nav-btn {
             padding: 8px 16px;
             background: #28a745;
@@ -296,6 +296,23 @@
 
         .nav-btn:hover {
             background: #218838;
+        }
+
+        .xhs-btn {
+            padding: 6px 12px;
+            background: linear-gradient(135deg, #ff2442 0%, #ff6b7a 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            white-space: nowrap;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .xhs-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 36, 66, 0.4);
         }
 
         /* 高德地图 */
@@ -1548,14 +1565,17 @@
 
             listEl.innerHTML = spots.map(spot => `
                 <div class="spot-item" onclick="showDetail(${spot.id})">
-                    <img src="${spot.image}" alt="${spot.name}" class="spot-image" onclick="event.stopPropagation(); searchOnXiaohongshu('${spot.name}', '${spot.flower}')" title="点击搜索小红书">
+                    <img src="${spot.image}" alt="${spot.name}" class="spot-image">
                     <div class="spot-info">
                         <div class="spot-name">${spot.name}</div>
                         <div class="spot-flower">🌸 ${spot.flower}</div>
                         <span class="spot-status status-${spot.status}">${getStatusText(spot.status)}</span>
                     </div>
-                    <div class="spot-distance">${formatDistance(spot.distance)}</div>
-                    <button class="nav-btn" onclick="event.stopPropagation(); navigateToSpot(${spot.id})">导航</button>
+                    <div class="spot-actions">
+                        <div class="spot-distance">${formatDistance(spot.distance)}</div>
+                        <button class="xhs-btn" onclick="event.stopPropagation(); searchOnXiaohongshu('${spot.name}', '${spot.flower}')">📕 小红书攻略</button>
+                        <button class="nav-btn" onclick="event.stopPropagation(); navigateToSpot(${spot.id})">导航</button>
+                    </div>
                 </div>
             `).join('');
 

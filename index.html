@@ -553,7 +553,7 @@
                     </div>
                     <div style="position: relative;">
                         <div class="location-input">
-                            <input type="text" id="locationInput" placeholder="输入：西湖、东站、滨江等（按回车搜索）" autocomplete="off" onkeypress="if(event.key==='Enter')searchLocation()">
+                            <input type="text" id="locationInput" placeholder="输入任意地址：小区、公司、学校、商场等（按回车）" autocomplete="off" onkeypress="if(event.key==='Enter')searchLocation()">
                             <button onclick="searchLocation()">🔍 搜索</button>
                             <button onclick="getCurrentLocation()">📍 定位</button>
                         </div>
@@ -600,7 +600,8 @@
     </div>
 
     <!-- 高德地图JS（Key已配置） -->
-    <script src="https://webapi.amap.com/maps?v=2.0&key=6b677be2aab2719b595ea12cafbffccc&plugin=AMap.Geocoder,AMap.PlaceSearch,AMap.Driving"></script>
+    <script src="https://webapi.amap.com/maps?v=2.0&key=6b677be2aab2719b595ea12cafbffccc"></script>
+    <!-- 使用Web服务API进行搜索（更稳定） -->
     <script>
         // ========== 高德Key已配置 ==========
         const GAODE_KEY = '6b677be2aab2719b595ea12cafbffccc';
@@ -795,8 +796,6 @@
         let userLocation = { lat: 30.25, lng: 120.15 };
         let currentFilter = 'all';
         let map;
-        let geocoder;
-        let placeSearch;
         let currentSpot = null;
 
         // 初始化
@@ -811,21 +810,6 @@
             map = new AMap.Map('map', {
                 zoom: 11,
                 center: [userLocation.lng, userLocation.lat]
-            });
-
-            // 初始化插件
-            AMap.plugin(['AMap.Geocoder', 'AMap.PlaceSearch', 'AMap.Driving'], function() {
-                geocoder = new AMap.Geocoder({
-                    city: '杭州',
-                    radius: 10000
-                });
-                placeSearch = new AMap.PlaceSearch({
-                    city: '杭州',
-                    citylimit: true,
-                    pageSize: 5,
-                    type: '商务住宅|交通设施服务'
-                });
-                console.log('高德插件加载成功');
             });
 
             updateMapMarkers();
@@ -890,65 +874,61 @@
             { name: '宋城', address: '杭州市西湖区', lng: 120.105, lat: 30.185 }
         ];
 
-        // 搜索位置
-        function searchLocation() {
+        // 搜索位置 - 使用高德Web服务API
+        async function searchLocation() {
             const keyword = document.getElementById('locationInput').value.trim();
             if (!keyword) {
                 alert('请输入搜索关键词');
                 return;
             }
 
+            console.log('开始搜索:', keyword);
+
             // 先尝试本地预设匹配
             const localMatches = presetLocations.filter(loc =>
                 loc.name.includes(keyword) || keyword.includes(loc.name)
             );
 
-            // 如果高德插件已加载，同时使用高德搜索
-            if (placeSearch) {
-                try {
-                    placeSearch.search(keyword, function(status, result) {
-                        console.log('搜索状态:', status, '结果:', result);
+            // 使用高德Web服务API进行搜索
+            try {
+                const url = `https://restapi.amap.com/v3/place/text?key=${GAODE_KEY}&keywords=${encodeURIComponent(keyword)}&city=杭州&citylimit=true&offset=10&page=1&extensions=all`;
 
-                        let allResults = [...localMatches];
+                const response = await fetch(url);
+                const data = await response.json();
 
-                        // 高德搜索成功，合并结果
-                        if (status === 'complete' && result && result.info === 'OK' && result.poiList) {
-                            const pois = result.poiList.pois || [];
-                            pois.forEach(poi => {
-                                if (poi.location && !allResults.find(r => r.name === poi.name)) {
-                                    allResults.push({
-                                        name: poi.name,
-                                        address: poi.address || poi.adname || '杭州市',
-                                        lng: poi.location.lng,
-                                        lat: poi.location.lat
-                                    });
-                                }
-                            });
-                        }
+                console.log('高德搜索结果:', data);
 
-                        // 有结果就显示，不管高德是否成功
-                        if (allResults.length > 0) {
-                            showSuggestions(allResults);
-                        } else {
-                            // 本地也没有，显示预设的全部地点
-                            showSuggestions(presetLocations);
+                let allResults = [...localMatches];
+
+                if (data.status === '1' && data.pois && data.pois.length > 0) {
+                    data.pois.forEach(poi => {
+                        if (poi.location) {
+                            const [lng, lat] = poi.location.split(',').map(Number);
+                            if (!allResults.find(r => r.name === poi.name)) {
+                                allResults.push({
+                                    name: poi.name,
+                                    address: poi.address || poi.adname || '杭州市',
+                                    lng: lng,
+                                    lat: lat
+                                });
+                            }
                         }
                     });
-                } catch (e) {
-                    console.error('搜索出错:', e);
-                    // 高德出错，用本地数据
-                    if (localMatches.length > 0) {
-                        showSuggestions(localMatches);
-                    } else {
-                        showSuggestions(presetLocations);
-                    }
                 }
-            } else {
-                // 插件未加载，只用本地数据
+
+                if (allResults.length > 0) {
+                    showSuggestions(allResults);
+                } else {
+                    alert('未找到相关位置，请尝试输入更具体的关键词，如"西湖区文三路"');
+                }
+
+            } catch (error) {
+                console.error('搜索出错:', error);
+                // API调用失败，使用本地数据
                 if (localMatches.length > 0) {
                     showSuggestions(localMatches);
                 } else {
-                    showSuggestions(presetLocations);
+                    alert('搜索服务暂时不可用，请尝试输入预设地点：西湖、东站、滨江等');
                 }
             }
         }
@@ -977,35 +957,40 @@
         }
 
         // 获取当前位置
-        function getCurrentLocation() {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    pos => {
-                        userLocation = {
-                            lat: pos.coords.latitude,
-                            lng: pos.coords.longitude
-                        };
-
-                        // 逆地理编码获取地址名称
-                        if (geocoder) {
-                            geocoder.getAddress([userLocation.lng, userLocation.lat], function(status, result) {
-                                if (status === 'complete') {
-                                    document.getElementById('locationInput').value = result.regeocode.formattedAddress;
-                                }
-                            });
-                        }
-
-                        map.setCenter([userLocation.lng, userLocation.lat]);
-                        updateMapMarkers();
-                        updateSpotList();
-                    },
-                    err => {
-                        alert('定位失败，请检查定位权限');
-                    }
-                );
-            } else {
+        async function getCurrentLocation() {
+            if (!navigator.geolocation) {
                 alert('浏览器不支持定位');
+                return;
             }
+
+            navigator.geolocation.getCurrentPosition(
+                async pos => {
+                    userLocation = {
+                        lat: pos.coords.latitude,
+                        lng: pos.coords.longitude
+                    };
+
+                    // 使用高德逆地理编码获取地址
+                    try {
+                        const url = `https://restapi.amap.com/v3/geocode/regeo?key=${GAODE_KEY}&location=${userLocation.lng},${userLocation.lat}&extensions=base`;
+                        const response = await fetch(url);
+                        const data = await response.json();
+
+                        if (data.status === '1' && data.regeocode) {
+                            document.getElementById('locationInput').value = data.regeocode.formatted_address;
+                        }
+                    } catch (e) {
+                        console.log('逆地理编码失败');
+                    }
+
+                    map.setCenter([userLocation.lng, userLocation.lat]);
+                    updateMapMarkers();
+                    updateSpotList();
+                },
+                err => {
+                    alert('定位失败，请检查定位权限或手动输入位置');
+                }
+            );
         }
 
         // 开始导航

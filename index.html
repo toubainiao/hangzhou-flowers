@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>杭州赏花日历 - 2025花季指南</title>
+    <title>杭州赏花日历 - 2026花季指南</title>
     <!-- 高德地图CSS -->
     <link rel="stylesheet" href="https://a.amap.com/jsapi_demos/static/demo-center/css/demo-center.css" />
     <style>
@@ -237,6 +237,13 @@
             border-radius: 10px;
             object-fit: cover;
             margin-right: 15px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .spot-image:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
 
         .spot-info {
@@ -486,7 +493,7 @@
     <div class="container">
         <header>
             <h1>🌸 杭州赏花日历</h1>
-            <p>2025年杭州地区热门赏花地点花期指南（高德地图版）</p>
+            <p>2026年杭州地区热门赏花地点花期指南（投白鸟版）</p>
         </header>
 
         <div class="main-grid">
@@ -1541,7 +1548,7 @@
 
             listEl.innerHTML = spots.map(spot => `
                 <div class="spot-item" onclick="showDetail(${spot.id})">
-                    <img src="${spot.image}" alt="${spot.name}" class="spot-image">
+                    <img src="${spot.image}" alt="${spot.name}" class="spot-image" onclick="event.stopPropagation(); searchOnXiaohongshu('${spot.name}', '${spot.flower}')" title="点击搜索小红书">
                     <div class="spot-info">
                         <div class="spot-name">${spot.name}</div>
                         <div class="spot-flower">🌸 ${spot.flower}</div>
@@ -1636,6 +1643,13 @@
             });
             event.target.classList.add('active');
             updateSpotList();
+        }
+
+        // 跳转到小红书搜索
+        function searchOnXiaohongshu(name, flower) {
+            const keyword = encodeURIComponent(`${name} ${flower}`);
+            const url = `https://www.xiaohongshu.com/search_result?keyword=${keyword}`;
+            window.open(url, '_blank');
         }
 
         function showDetail(id) {

@@ -599,13 +599,14 @@
         </div>
     </div>
 
-    <!-- 高德地图JS（Key已配置） -->
-    <script src="https://webapi.amap.com/maps?v=2.0&key=66e4c25ae0a3da4b707e417fb0d88b60"></script>
+    <!-- 高德地图JS（Web端Key用于显示地图） -->
+    <script src="https://webapi.amap.com/maps?v=2.0&key=6b677be2aab2719b595ea12cafbffccc"></script>
     <!-- 使用Web服务API进行搜索（更稳定） -->
     <script>
-        // ========== 高德Key已配置 ==========
-        const GAODE_KEY = '66e4c25ae0a3da4b707e417fb0d88b60';
-        // ====================================
+        // ========== 高德Key配置 ==========
+        const MAP_KEY = '6b677be2aab2719b595ea12cafbffccc';      // Web端Key - 用于地图显示
+        const SEARCH_KEY = '66e4c25ae0a3da4b707e417fb0d88b60';    // Web服务Key - 用于搜索
+        // =================================
 
         // 杭州赏花地点数据
         const flowerSpots = [
@@ -896,7 +897,7 @@
 
             // 使用JSONP调用高德API
             const callbackName = 'gaodeSearchCallback_' + Date.now();
-            const url = `https://restapi.amap.com/v3/place/text?key=${GAODE_KEY}&keywords=${encodeURIComponent(keyword)}&city=杭州&citylimit=true&offset=10&page=1&extensions=all&callback=${callbackName}`;
+            const url = `https://restapi.amap.com/v3/place/text?key=${SEARCH_KEY}&keywords=${encodeURIComponent(keyword)}&city=杭州&citylimit=true&offset=10&page=1&extensions=all&callback=${callbackName}`;
 
             // 创建script标签
             const script = document.createElement('script');
@@ -1001,7 +1002,7 @@
 
                     // 使用高德逆地理编码获取地址
                     try {
-                        const url = `https://restapi.amap.com/v3/geocode/regeo?key=${GAODE_KEY}&location=${userLocation.lng},${userLocation.lat}&extensions=base`;
+                        const url = `https://restapi.amap.com/v3/geocode/regeo?key=${SEARCH_KEY}&location=${userLocation.lng},${userLocation.lat}&extensions=base`;
                         const response = await fetch(url);
                         const data = await response.json();
 

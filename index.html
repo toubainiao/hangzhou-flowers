@@ -874,8 +874,8 @@
             { name: '宋城', address: '杭州市西湖区', lng: 120.105, lat: 30.185 }
         ];
 
-        // 搜索位置 - 使用高德Web服务API
-        async function searchLocation() {
+        // 搜索位置 - 使用高德Web服务API（JSONP方式避免跨域）
+        function searchLocation() {
             const keyword = document.getElementById('locationInput').value.trim();
             if (!keyword) {
                 alert('请输入搜索关键词');
@@ -889,13 +889,21 @@
                 loc.name.includes(keyword) || keyword.includes(loc.name)
             );
 
-            // 使用高德Web服务API进行搜索
-            try {
-                const url = `https://restapi.amap.com/v3/place/text?key=${GAODE_KEY}&keywords=${encodeURIComponent(keyword)}&city=杭州&citylimit=true&offset=10&page=1&extensions=all`;
+            // 如果有本地匹配，先显示
+            if (localMatches.length > 0) {
+                showSuggestions(localMatches);
+            }
 
-                const response = await fetch(url);
-                const data = await response.json();
+            // 使用JSONP调用高德API
+            const callbackName = 'gaodeSearchCallback_' + Date.now();
+            const url = `https://restapi.amap.com/v3/place/text?key=${GAODE_KEY}&keywords=${encodeURIComponent(keyword)}&city=杭州&citylimit=true&offset=10&page=1&extensions=all&callback=${callbackName}`;
 
+            // 创建script标签
+            const script = document.createElement('script');
+            script.src = url;
+
+            // 定义回调函数
+            window[callbackName] = function(data) {
                 console.log('高德搜索结果:', data);
 
                 let allResults = [...localMatches];
@@ -918,19 +926,40 @@
 
                 if (allResults.length > 0) {
                     showSuggestions(allResults);
-                } else {
-                    alert('未找到相关位置，请尝试输入更具体的关键词，如"西湖区文三路"');
+                } else if (localMatches.length === 0) {
+                    alert('未找到相关位置，请尝试输入更具体的关键词');
                 }
 
-            } catch (error) {
-                console.error('搜索出错:', error);
-                // API调用失败，使用本地数据
-                if (localMatches.length > 0) {
-                    showSuggestions(localMatches);
-                } else {
-                    alert('搜索服务暂时不可用，请尝试输入预设地点：西湖、东站、滨江等');
+                // 清理
+                delete window[callbackName];
+                document.head.removeChild(script);
+            };
+
+            // 错误处理
+            script.onerror = function() {
+                console.error('搜索请求失败');
+                if (localMatches.length === 0) {
+                    alert('搜索服务暂时不可用，请尝试输入：西湖、东站、滨江等');
                 }
-            }
+                delete window[callbackName];
+                document.head.removeChild(script);
+            };
+
+            // 超时处理
+            setTimeout(function() {
+                if (window[callbackName]) {
+                    console.log('搜索超时');
+                    if (localMatches.length === 0) {
+                        alert('搜索超时，请检查网络或输入预设地点');
+                    }
+                    delete window[callbackName];
+                    if (script.parentNode) {
+                        document.head.removeChild(script);
+                    }
+                }
+            }, 5000);
+
+            document.head.appendChild(script);
         }
 
         // 显示搜索建议
